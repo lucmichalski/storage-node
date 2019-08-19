@@ -546,6 +546,8 @@ func handleAccountReceivingGas(account Account) error {
 /*handleAccountReadyForCollection will attempt to retrieve the tokens from the account's payment address and set the
 account's payment status to the next status if there are no errors.*/
 func handleAccountReadyForCollection(account Account) error {
+	utils.SlackLog("about to get balances")
+	utils.SlackLog(time.Now().String())
 	tokenBalance := EthWrapper.GetTokenBalance(services.StringToAddress(account.EthAddress))
 	ethBalance := EthWrapper.GetETHBalance(services.StringToAddress(account.EthAddress))
 	keyInBytes, decryptErr := utils.DecryptWithErrorReturn(
@@ -555,18 +557,25 @@ func handleAccountReadyForCollection(account Account) error {
 	)
 	privateKey, keyErr := services.StringToPrivateKey(hex.EncodeToString(keyInBytes))
 
+	utils.SlackLog("got balances")
+	utils.SlackLog(time.Now().String())
+
 	if tokenBalance.Int64() == 0 {
 		return errors.New("expected a token balance but found 0")
 	} else if ethBalance.Int64() == 0 {
 		return errors.New("expected an eth balance but found 0")
 	} else if tokenBalance.Int64() > 0 && ethBalance.Int64() > 0 &&
 		utils.ReturnFirstError([]error{decryptErr, keyErr}) == nil {
+		utils.SlackLog("about to transfer tokens")
+		utils.SlackLog(time.Now().String())
 		success, _, _ := EthWrapper.TransferToken(
 			services.StringToAddress(account.EthAddress),
 			privateKey,
 			services.MainWalletAddress,
 			*tokenBalance,
 			services.SlowGasPrice)
+		utils.SlackLog("transfer token call complete")
+		utils.SlackLog(time.Now().String())
 		if success {
 			SetAccountsToNextPaymentStatus([]Account{account})
 			return nil
